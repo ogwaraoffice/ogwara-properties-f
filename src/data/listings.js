@@ -8,7 +8,8 @@
 // Your verification & listing fee, shown to landlords. Leave '' to say "confirmed on WhatsApp".
 export const LISTING_FEE = '' // e.g. '₦5,000'
 
-export const WHATSAPP_NUMBER = '2347026135346'
+
+export const WHATSAPP_NUMBER = '2347026135346' // +234 702 613 5346
 export const WHATSAPP_DISPLAY = '+234 702 613 5346'
 export const CALL_NUMBER = '+2347046672738'
 export const CALL_DISPLAY = '0704 667 2738'
@@ -59,4 +60,5 @@ export const REVIEW_ASPECTS = [
 //   video: '/media/OGW-1001.mp4',                               // optional
 //   verified: true,              // only after your team has checked the property
 // },
-export const LISTINGS = []
+export const LISTINGS = [
+]
