@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://ogwaraoffice.github.io/sitemap.xml
