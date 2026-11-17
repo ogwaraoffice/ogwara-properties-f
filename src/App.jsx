@@ -1,4 +1,3 @@
-
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Heart, Info, MapPin, Search, SearchX, X } from 'lucide-react'
 import { AREAS, CATEGORIES, TAGLINE, waNumberLink } from './data/listings.js'
@@ -8,6 +7,7 @@ import ListingCard, { areaName } from './components/ListingCard.jsx'
 import { BottomNav, Footer, Header } from './components/Layout.jsx'
 import { supabase, supabaseConfigured } from './lib/supabase.js'
 
+// Modals are code-split so first paint stays light on 3G/4G.
 const ListingModal = lazy(() => import('./components/ListingModal.jsx'))
 const AuthModal = lazy(() => import('./components/AuthModal.jsx'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard.jsx'))
@@ -16,13 +16,13 @@ const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
 export default function App() {
   const [listings, setListings] = useState([])
-  const [view, setView] = useState('browse')
+  const [view, setView] = useState('browse') // browse | saved
   const [q, setQ] = useState('')
   const [category, setCategory] = useState('all')
   const [area, setArea] = useState('all')
   const [budgetT, setBudgetT] = useState(100)
   const [openId, setOpenId] = useState(null)
-  const [modal, setModal] = useState(null)
+  const [modal, setModal] = useState(null) // auth
   const [toast, setToast] = useState('')
   const [bannerOff, setBannerOff] = useState(false)
 
@@ -35,17 +35,12 @@ export default function App() {
   useEffect(() => {
     if (!supabase) return
     supabase.from('properties').select('*').eq('published', true).order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setListings(data.map((p) => ({ ...p, id: p.id, type: p.property_type, beds: p.bedrooms, baths: p.bathrooms, studentWalk: p.student_walk, images: p.images || [], landmarks: p.landmarks || [] })))
-      })
+      .then(({ data, error }) => { if (!error && data) setListings(data.map((p) => ({ ...p, id: p.id, type: p.property_type, beds: p.bedrooms, baths: p.bathrooms, studentWalk: p.student_walk, images: p.images || [], landmarks: p.landmarks || [] }))) })
   }, [])
 
   useEffect(() => {
     if (!supabase) { setAuthReady(true); return }
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ? { ...data.session.user, name: data.session.user.user_metadata?.full_name || data.session.user.email } : null)
-      setAuthReady(true)
-    })
+    supabase.auth.getSession().then(({ data }) => { setUser(data.session?.user ? { ...data.session.user, name: data.session.user.user_metadata?.full_name || data.session.user.email } : null); setAuthReady(true) })
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ? { ...session.user, name: session.user.user_metadata?.full_name || session.user.email } : null))
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -70,6 +65,7 @@ export default function App() {
     return listings.filter((l) => {
       if (category !== 'all' && l.category !== category) return false
       if (area !== 'all' && l.area !== area) return false
+      // Short lets are priced per night, so the yearly/sale slider only applies to the other categories.
       if (budget !== Infinity && (category === 'all' ? l.category !== 'shortlet' : true) && l.price > budget) return false
       if (!terms.length) return true
       const hay = norm([l.title, l.street, l.type, l.id, l.description, areaName(l.area), ...(l.landmarks || [])].join(' '))
@@ -85,10 +81,7 @@ export default function App() {
     setReviews((r) => ({ ...r, [id]: [review, ...(r[id] || [])] }))
     notify('Thanks, your review has been posted.')
   }
-  const rating = (id) => {
-    const rs = reviews[id] || []
-    return [average(rs.map((r) => r.rating)), rs.length]
-  }
+  const rating = (id) => { const rs = reviews[id] || []; return [average(rs.map((r) => r.rating)), rs.length] }
 
   const openListing = useCallback((id) => setOpenId(id), [])
   const active = listings.find((l) => l.id === openId)
@@ -120,6 +113,7 @@ export default function App() {
         <div className="bg-amber-100 px-4 py-2 text-center text-xs font-semibold text-amber-950">Account services are being configured. Registration and sign-in will be available before launch.</div>
       )}
 
+      {/* Hero search */}
       <section className="bg-navy text-white" aria-label="Search properties">
         <div className="mx-auto max-w-6xl px-4 pb-7 pt-6 sm:pb-10 sm:pt-10">
           <h1 className="max-w-2xl text-[1.65rem] font-extrabold leading-tight sm:text-4xl">Find your next home in <span className="text-teal">Benin City</span></h1>
@@ -128,10 +122,12 @@ export default function App() {
           <div className="mt-5 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
             <div className="relative">
               <Search size={20} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-navy/50" aria-hidden="true" />
-              <input type="search" value={q} onChange={(e) => { setQ(e.target.value); setView('browse') }}
+              <input
+                type="search" value={q} onChange={(e) => { setQ(e.target.value); setView('browse') }}
                 placeholder="Search street, landmark (Ihama, UNIBEN Gate, UBTH) or title"
                 aria-label="Search properties" enterKeyHint="search"
-                className="w-full rounded-xl bg-white py-3.5 pl-11 pr-3 text-base text-navy placeholder:text-navy/45 focus:outline-2 focus:outline-teal" />
+                className="w-full rounded-xl bg-white py-3.5 pl-11 pr-3 text-base text-navy placeholder:text-navy/45 focus:outline-2 focus:outline-teal"
+              />
             </div>
             <div className="relative">
               <MapPin size={20} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-navy/50" aria-hidden="true" />
@@ -211,17 +207,9 @@ export default function App() {
           <ListingModal listing={active} reviews={reviews[active.id] || []} saved={saved.includes(active.id)} user={user}
             onToggleSave={toggleSave} onAddReview={addReview} onClose={() => setOpenId(null)} />
         )}
-        {modal === 'admin' && isAdmin && <AdminDashboard onClose={() => setModal(null)} onSaved={() => {
-          supabase?.from('properties').select('*').eq('published', true).order('created_at', { ascending: false }).then(({ data }) => {
-            if (data) setListings(data.map((p) => ({ ...p, id: p.id, type: p.property_type, beds: p.bedrooms, baths: p.bathrooms, studentWalk: p.student_walk, images: p.images || [], landmarks: p.landmarks || [] })))
-          })
-        }} />}
+        {modal === 'admin' && isAdmin && <AdminDashboard onClose={() => setModal(null)} onSaved={() => { supabase?.from('properties').select('*').eq('published', true).order('created_at', { ascending: false }).then(({ data }) => { if (data) setListings(data.map((p) => ({ ...p, id: p.id, type: p.property_type, beds: p.bedrooms, baths: p.bathrooms, studentWalk: p.student_walk, images: p.images || [], landmarks: p.landmarks || [] }))) }) }} />}
         {modal === 'auth' && (
-          <AuthModal onClose={() => setModal(null)} onAuth={(u) => {
-            setUser({ ...u, name: u.user_metadata?.full_name || u.email })
-            setModal(null)
-            notify(`Welcome, ${u.user_metadata?.full_name || u.email}!`)
-          }} />
+          <AuthModal onClose={() => setModal(null)} onAuth={(u) => { setUser({ ...u, name: u.user_metadata?.full_name || u.email }); setModal(null); notify(`Welcome, ${u.user_metadata?.full_name || u.email}!`) }} />
         )}
       </Suspense>
     </div>
